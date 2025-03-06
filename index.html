@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Travel Alarm App</title>
+  <!-- OpenStreetMap via Leaflet (free) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background-color: #f5f5f5;
+      color: #333;
+    }
+    
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    header {
+      background-color: #2c3e50;
+      color: white;
+      padding: 20px;
+      border-radius: 10px 10px 0 0;
+      text-align: center;
+    }
+    
+    .app-body {
+      background-color: white;
+      padding: 20px;
+      border-radius: 0 0 10px 10px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    h1 {
+      margin-bottom: 10px;
+    }
+    
+    .tagline {
+      font-size: 0.9rem;
+      opacity: 0.8;
+      margin-bottom: 10px;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    
+    input, select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 1rem;
+    }
+    
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1rem;
+      width: 100%;
+      transition: background-color 0.3s;
+    }
+    
+    button:hover {
+      background-color: #2980b9;
+    }
+    
+    .secondary-button {
+      background-color: #6c757d;
+      margin-top: 10px;
+    }
+    
+    .secondary-button:hover {
+      background-color: #5a6268;
+    }
+    
+    .small-button {
+      padding: 8px 15px;
+      font-size: 0.9rem;
+      margin-top: 8px;
+    }
+    
+    .location-option {
+      display: flex;
+      margin-bottom: 15px;
+    }
+    
+    .location-option label {
+      margin-right: 15px;
+      font-weight: normal;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+    }
+    
+    .location-option input[type="radio"] {
+      width: auto;
+      margin-right: 5px;
+    }
+    
+    .alarm-status {
+      margin-top: 30px;
+      padding: 15px;
+      border-radius: 5px;
+      text-align: center;
+      display: none;
+    }
+    
+    .active {
+      display: block;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    #map {
+      height: 300px;
+      margin-top: 20px;
+      border-radius: 5px;
+      z-index: 1;
+    }
+    
+    .alert-settings {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #f8f9fa;
+      border-radius: 5px;
+    }
+    
+    .time-display {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    
+    .info-text {
+      margin-top: 20px;
+      font-size: 0.9rem;
+      color: #6c757d;
+    }
+    
+    .journey-details {
+      margin-top: 15px;
+      display: none;
+    }
+    
+    .journey-details.active {
+      display: block;
+    }
+    
+    .progress-bar-container {
+      height: 10px;
+      background-color: #e9ecef;
+      border-radius: 5px;
+      margin: 15px 0;
+      overflow: hidden;
+    }
+    
+    .progress-bar {
+      height: 100%;
+      background-color: #3498db;
+      width: 0%;
+      transition: width 1s;
+    }
+    
+    .location-dot {
+      width: 15px;
+      height: 15px;
+      background-color: #e74c3c;
+      border-radius: 50%;
+      position: relative;
+      margin: 0 auto;
+    }
+    
+    .pulse {
+      animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7);
+      }
+      70% {
+        box-shadow: 0 0 0 10px rgba(231, 76, 60, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+      }
+    }
+    
+    #notification {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #28a745;
+      color: white;
+      padding: 15px 25px;
+      border-radius: 5px;
+      z-index: 1000;
+      display: none;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .button-group button {
+      flex: 1;
+    }
+    
+    .location-status {
+      padding: 8px 0;
+      font-size: 0.9rem;
+      color: #6c757d;
+    }
+    
+    .success {
+      color: #28a745;
+    }
+    
+    .error {
+      color: #dc3545;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Travel Alarm</h1>
+      <p class="tagline">Never miss your stop again!</p>
+    </header>
+    
+    <div class="app-body">
+      <div id="setup-panel">
+        <!-- Origin Options -->
+        <div class="form-group">
+          <label>Origin Selection Method:</label>
+          <div class="location-option">
+            <label>
+              <input type="radio" name="origin-method" value="current" checked> Use my current location
+            </label>
+            <label>
+              <input type="radio" name="origin-method" value="manual"> Enter manually
+            </label>
+          </div>
+          
+          <div id="origin-manual-input" class="hidden">
+            <input type="text" id="origin" placeholder="Enter your origin location">
+            <button id="search-origin" class="small-button">Search Origin</button>
+            <p id="origin-status" class="location-status"></p>
+          </div>
+          
+          <div id="origin-current-input">
+            <button id="get-location" class="small-button">Allow Location Access</button>
+            <p id="current-location-status" class="location-status">Click to detect your current location</p>
+          </div>
+        </div>
+        
+        <!-- Destination Input -->
+        <div class="form-group">
+          <label for="destination">Destination</label>
+          <input type="text" id="destination" placeholder="Enter your destination">
+          <button id="search-destination" class="small-button">Search Destination</button>
+          <p id="destination-status" class="location-status"></p>
+        </div>
+        
+        <div class="form-group">
+          <label for="transport-mode">Transport Mode</label>
+          <select id="transport-mode">
+            <option value="train">Train</option>
+            <option value="bus">Bus</option>
+            <option value="subway">Subway</option>
+            <option value="car">Car</option>
+          </select>
+        </div>
+        
+        <div class="alert-settings">
+          <label for="alert-time">Alert me before reaching destination:</label>
+          <select id="alert-time">
+            <option value="5">5 minutes</option>
+            <option value="10">10 minutes</option>
+            <option value="15">15 minutes</option>
+            <option value="20">20 minutes</option>
+          </select>
+        </div>
+        
+        <button id="set-alarm" disabled>Set Travel Alarm</button>
+      </div>
+      
+      <div id="map"></div>
+      
+      <div id="journey-panel" class="journey-details">
+        <div class="time-display">
+          <p>Current time: <span id="current-time">--:--</span></p>
+          <p>Estimated arrival: <span id="arrival-time">--:--</span></p>
+          <p>Distance to destination: <span id="distance">--</span></p>
+        </div>
+        
+        <div class="progress-bar-container">
+          <div id="journey-progress" class="progress-bar"></div>
+        </div>
+        
+        <div class="status-info">
+          <p>Status: <span id="status">Tracking your journey</span></p>
+          <p>Alert set for: <span id="alert-mins">5</span> minutes before arrival</p>
+        </div>
+        
+        <button id="cancel-alarm" class="secondary-button">Cancel Alarm</button>
+      </div>
+      
+      <p class="info-text">
+        This app uses either your device's location or manual input to track your journey and alert you before reaching your destination. We use OpenStreetMap (free) for mapping and location services.
+      </p>
+    </div>
+  </div>
+  
+  <div id="notification">
+    <p>Almost at your destination! <span id="mins-left"></span> minutes remaining!</p>
+  </div>
+
+  <script>
+    // DOM Elements
+    const originMethodRadios = document.querySelectorAll('input[name="origin-method"]');
+    const originManualInput = document.getElementById('origin-manual-input');
+    const originCurrentInput = document.getElementById('origin-current-input');
+    const originInput = document.getElementById('origin');
+    const searchOriginBtn = document.getElementById('search-origin');
+    const originStatus = document.getElementById('origin-status');
+    const getLocationBtn = document.getElementById('get-location');
+    const currentLocationStatus = document.getElementById('current-location-status');
+    const setAlarmBtn = document.getElementById('set-alarm');
+    const cancelAlarmBtn = document.getElementById('cancel-alarm');
+    const setupPanel = document.getElementById('setup-panel');
+    const journeyPanel = document.getElementById('journey-panel');
+    const destinationInput = document.getElementById('destination');
+    const searchDestinationBtn = document.getElementById('search-destination');
+    const destinationStatus = document.getElementById('destination-status');
+    const alertTimeSelect = document.getElementById('alert-time');
+    const currentTimeDisplay = document.getElementById('current-time');
+    const arrivalTimeDisplay = document.getElementById('arrival-time');
+    const distanceDisplay = document.getElementById('distance');
+    const journeyProgress = document.getElementById('journey-progress');
+    const statusDisplay = document.getElementById('status');
+    const alertMinsDisplay = document.getElementById('alert-mins');
+    const notification = document.getElementById('notification');
+    const minsLeftDisplay = document.getElementById('mins-left');
+    
+    // Variables
+    let map;
+    let originMarker;
+    let destinationMarker;
+    let originLocation = null;
+    let destinationLocation = null;
+    let routeLine;
+    let watchId;
+    let alarmSet = false;
+    let alarmTriggered = false;
+    let estimatedArrivalTime;
+    let startDistance;
+    let currentDistance;
+    let alertTime;
+    let useCurrentLocation = true;
+    let locationTracking = false;
+    
+    // Initialize map with default view
+    function initMap() {
+      map = L.map('map').setView([40.7128, -74.0060], 13); // Default to NYC
+      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+      }).addTo(map);
+    }
+    
+    // Update clock
+    function updateClock() {
+      const now = new Date();
+      const hours = now.getHours().toString().padStart(2, '0');
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      const seconds = now.getSeconds().toString().padStart(2, '0');
+      currentTimeDisplay.textContent = `${hours}:${minutes}:${seconds}`;
+      
+      if (alarmSet && !alarmTriggered) {
+        checkDistanceAndTime();
+      }
+      
+      setTimeout(updateClock, 1000);
+    }
+    
+    // Get user's current location
+    function getUserLocation() {
+      currentLocationStatus.textContent = "Accessing your location...";
+      currentLocationStatus.className = "location-status";
+      
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            originLocation = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            };
+            
+            currentLocationStatus.textContent = "✓ Location accessed successfully!";
+            currentLocationStatus.className = "location-status success";
+            
+            // Update UI
+            updateSetAlarmButtonState();
+            
+            // Center map on user's location
+            map.setView([originLocation.lat, originLocation.lng], 15);
+            
+            // Add marker for user's location
+            if (originMarker) {
+              originMarker.setLatLng([originLocation.lat, originLocation.lng]);
+            } else {
+              originMarker = L.marker([originLocation.lat, originLocation.lng], {
+                icon: L.divIcon({
+                  className: 'location-dot pulse',
+                  iconSize: [15, 15]
+                })
+              }).addTo(map);
+            }
+            
+            // If destination is already set, draw route
+            if (destinationLocation) {
+              drawRoute();
+            }
+          },
+          (error) => {
+            currentLocationStatus.textContent = `Error: ${error.message}`;
+            currentLocationStatus.className = "location-status error";
+          }
+        );
+      } else {
+        currentLocationStatus.textContent = "Geolocation is not supported by your browser";
+        currentLocationStatus.className = "location-status error";
+      }
+    }
+    // Audio element for alarm sound
+// Replace the initAlarmSound function with this:
+function initAlarmSound() {
+    // Use a local audio file in the same directory as your HTML
+    alarmSound = new Audio('./alarm.wav');
+    alarmSound.loop = true;
+  }
+  
+  // Replace the triggerAlarm function with this:
+  function triggerAlarm() {
+    alarmTriggered = true;
+    
+    // Display notification
+    notification.style.display = "block";
+    minsLeftDisplay.textContent = alertTime;
+    
+    // Play the alarm sound
+    alarmSound.play().catch(e => {
+      console.error("Audio playback failed:", e);
+      // Fallback to alert if audio fails
+      alert(`Almost at your destination! ${alertTime} minutes remaining!`);
+    });
+    
+    // Set timeout to hide notification after 10 seconds
+    setTimeout(() => {
+      notification.style.display = "none";
+      alarmSound.pause();
+      alarmSound.currentTime = 0;
+      
+      // Ask user if they've arrived
+      const arrived = confirm("Have you arrived at your destination?");
+      if (arrived) {
+        stopAlarm();
+      } else {
+        // Reset for another alert in 1 minute
+        alarmTriggered = false;
+      }
+    }, 10000);
+  }
+  
+  // Update the stopAlarm function to properly handle the audio
+  function stopAlarm() {
+    if (watchId && locationTracking) {
+      navigator.geolocation.clearWatch(watchId);
+      locationTracking = false;
+    }
+    
+    // Stop the sound if it's playing
+    alarmSound.pause();
+    alarmSound.currentTime = 0;
+    
+    alarmSet = false;
+    alarmTriggered = false;
+    
+    // Reset UI
+    setupPanel.style.display = "block";
+    journeyPanel.classList.remove("active");
+    
+    // Clear map route
+    if (routeLine) {
+      map.removeLayer(routeLine);
+    }
+    
+    if (destinationMarker) {
+      map.removeLayer(destinationMarker);
+    }
+    
+    statusDisplay.textContent = "Tracking stopped";
+  }
+    
+    // Search for origin using Nominatim
+    function searchOrigin() {
+      const origin = originInput.value;
+      if (!origin) {
+        originStatus.textContent = "Please enter an origin location";
+        originStatus.className = "location-status error";
+        return false;
+      }
+      
+      originStatus.textContent = "Searching...";
+      originStatus.className = "location-status";
+      
+      return fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(origin)}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.length > 0) {
+            originLocation = {
+              lat: parseFloat(data[0].lat),
+              lng: parseFloat(data[0].lon)
+            };
+            
+            originStatus.textContent = "✓ Origin location found!";
+            originStatus.className = "location-status success";
+            
+            // Add marker for origin
+            if (originMarker) {
+              originMarker.setLatLng([originLocation.lat, originLocation.lng]);
+            } else {
+              originMarker = L.marker([originLocation.lat, originLocation.lng]).addTo(map);
+            }
+            
+            // Center map on origin
+            map.setView([originLocation.lat, originLocation.lng], 15);
+            
+            // Update UI
+            updateSetAlarmButtonState();
+            
+            // If destination is already set, draw route
+            if (destinationLocation) {
+              drawRoute();
+            }
+            
+            return true;
+          } else {
+            originStatus.textContent = "Location not found. Try a different search term.";
+            originStatus.className = "location-status error";
+            return false;
+          }
+        })
+        .catch(error => {
+          console.error("Error searching for origin:", error);
+          originStatus.textContent = "Error searching for location";
+          originStatus.className = "location-status error";
+          return false;
+        });
+    }
+    
+    // Search for destination using Nominatim
+    function searchDestination() {
+      const destination = destinationInput.value;
+      if (!destination) {
+        destinationStatus.textContent = "Please enter a destination";
+        destinationStatus.className = "location-status error";
+        return false;
+      }
+      
+      destinationStatus.textContent = "Searching...";
+      destinationStatus.className = "location-status";
+      
+      return fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.length > 0) {
+            destinationLocation = {
+              lat: parseFloat(data[0].lat),
+              lng: parseFloat(data[0].lon)
+            };
+            
+            destinationStatus.textContent = "✓ Destination found!";
+            destinationStatus.className = "location-status success";
+            
+            // Add marker for destination
+            if (destinationMarker) {
+              destinationMarker.setLatLng([destinationLocation.lat, destinationLocation.lng]);
+            } else {
+              destinationMarker = L.marker([destinationLocation.lat, destinationLocation.lng]).addTo(map);
+            }
+            
+            // If origin is already set, draw route
+            if (originLocation) {
+              drawRoute();
+            } else if (useCurrentLocation) {
+              // Remind to get current location
+              currentLocationStatus.textContent = "Please allow location access first";
+              currentLocationStatus.className = "location-status error";
+            }
+            
+            // Update UI
+            updateSetAlarmButtonState();
+            
+            return true;
+          } else {
+            destinationStatus.textContent = "Location not found. Try a different search term.";
+            destinationStatus.className = "location-status error";
+            return false;
+          }
+        })
+        .catch(error => {
+          console.error("Error searching for destination:", error);
+          destinationStatus.textContent = "Error searching for location";
+          destinationStatus.className = "location-status error";
+          return false;
+        });
+    }
+    
+    // Draw route between origin and destination
+    function drawRoute() {
+      if (originLocation && destinationLocation) {
+        if (routeLine) {
+          map.removeLayer(routeLine);
+        }
+        
+        routeLine = L.polyline([
+          [originLocation.lat, originLocation.lng],
+          [destinationLocation.lat, destinationLocation.lng]
+        ], {color: 'blue'}).addTo(map);
+        
+        // Fit map to show both markers
+        map.fitBounds(routeLine.getBounds(), {padding: [50, 50]});
+        
+        // Calculate distance
+        currentDistance = calculateDistance(
+          originLocation.lat, originLocation.lng,
+          destinationLocation.lat, destinationLocation.lng
+        );
+        startDistance = currentDistance;
+        
+        distanceDisplay.textContent = `${currentDistance.toFixed(2)} km`;
+        
+        return currentDistance;
+      }
+      return 0;
+    }
+    
+    // Calculate distance between two points using Haversine formula
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371; // Radius of the Earth in km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+    
+    // Start tracking user's location
+    function startTracking() {
+      // Save alert time preference
+      alertTime = parseInt(alertTimeSelect.value);
+      alertMinsDisplay.textContent = alertTime;
+      
+      if (useCurrentLocation && navigator.geolocation) {
+        locationTracking = true;
+        watchId = navigator.geolocation.watchPosition(
+          (position) => {
+            originLocation = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            };
+            
+            // Update origin marker position
+            originMarker.setLatLng([originLocation.lat, originLocation.lng]);
+            
+            // Update route
+            drawRoute();
+            
+            // Update progress
+            updateProgress();
+          },
+          (error) => {
+            console.error("Error tracking location:", error);
+            statusDisplay.textContent = "Error tracking location";
+          },
+          {
+            enableHighAccuracy: true,
+            maximumAge: 10000,
+            timeout: 10000
+          }
+        );
+      } else {
+        // For manual origin, just calculate ETA once and update progress based on time
+        updateEstimatedArrival();
+        setInterval(updateTimeBasedProgress, 10000); // Update every 10 seconds
+      }
+    }
+    
+    // Update progress based on location
+    function updateProgress() {
+      if (startDistance > 0 && currentDistance > 0) {
+        const progress = Math.max(0, Math.min(100, ((startDistance - currentDistance) / startDistance) * 100));
+        journeyProgress.style.width = `${progress}%`;
+        
+        // Update estimated arrival time based on progress and speed
+        updateEstimatedArrival();
+      }
+    }
+    
+    // Update progress based on time (for manual mode)
+    function updateTimeBasedProgress() {
+      if (!estimatedArrivalTime || !alarmSet) return;
+      
+      const now = new Date();
+      const totalJourneyTime = estimatedArrivalTime - new Date(estimatedArrivalTime.getTime() - (startDistance / getSpeed() * 3600000));
+      const elapsedTime = now - new Date(estimatedArrivalTime.getTime() - totalJourneyTime);
+      
+      const progress = Math.max(0, Math.min(100, (elapsedTime / totalJourneyTime) * 100));
+      journeyProgress.style.width = `${progress}%`;
+      
+      // Simulate distance calculation for non-tracking mode
+      const remainingPercent = 1 - (progress / 100);
+      currentDistance = startDistance * remainingPercent;
+      distanceDisplay.textContent = `${currentDistance.toFixed(2)} km`;
+    }
+    
+    // Get speed based on transport mode
+    function getSpeed() {
+      const transportSpeed = {
+        'train': 60, // km/h
+        'bus': 25,
+        'subway': 35,
+        'car': 50
+      };
+      
+      const modeSelect = document.getElementById('transport-mode');
+      return transportSpeed[modeSelect.value];
+    }
+    
+    // Update estimated arrival time
+    function updateEstimatedArrival() {
+      // Calculate time based on distance and speed
+      const speed = getSpeed();
+      
+      // Calculate time in hours
+      const timeHours = currentDistance / speed;
+      // Convert to minutes
+      const timeMinutes = timeHours * 60;
+      
+      // Calculate arrival time
+      const now = new Date();
+      estimatedArrivalTime = new Date(now.getTime() + timeMinutes * 60000);
+      
+      const hours = estimatedArrivalTime.getHours().toString().padStart(2, '0');
+      const minutes = estimatedArrivalTime.getMinutes().toString().padStart(2, '0');
+      
+      arrivalTimeDisplay.textContent = `${hours}:${minutes}`;
+      
+      return timeMinutes;
+    }
+    
+    // Check if it's time to trigger the alarm
+    function checkDistanceAndTime() {
+      if (!estimatedArrivalTime) return;
+      
+      const now = new Date();
+      const minutesUntilArrival = (estimatedArrivalTime - now) / 60000;
+      
+      if (minutesUntilArrival <= alertTime && !alarmTriggered) {
+        triggerAlarm();
+      }
+    }
+    // Update the state of the Set Alarm button
+    function updateSetAlarmButtonState() {
+      // Enable button if both origin and destination are set
+      if (originLocation && destinationLocation) {
+        setAlarmBtn.disabled = false;
+      } else {
+        setAlarmBtn.disabled = true;
+      }
+    }
+    
+    // Handle origin method change
+    function handleOriginMethodChange() {
+      useCurrentLocation = document.querySelector('input[name="origin-method"]:checked').value === 'current';
+      
+      if (useCurrentLocation) {
+        originManualInput.classList.add('hidden');
+        originCurrentInput.classList.remove('hidden');
+        
+        // Reset manual origin
+        originInput.value = '';
+        originStatus.textContent = '';
+        originStatus.className = 'location-status';
+      } else {
+        originManualInput.classList.remove('hidden');
+        originCurrentInput.classList.add('hidden');
+        
+        // Reset current location
+        currentLocationStatus.textContent = 'Manual input selected';
+        currentLocationStatus.className = 'location-status';
+      }
+      
+      // Reset origin location
+      originLocation = null;
+      if (originMarker && map.hasLayer(originMarker)) {
+        map.removeLayer(originMarker);
+        originMarker = null;
+      }
+      
+      // Reset route
+      if (routeLine && map.hasLayer(routeLine)) {
+        map.removeLayer(routeLine);
+        routeLine = null;
+      }
+      
+      // Update button state
+      updateSetAlarmButtonState();
+    }
+    
+    // Initialize the app
+    function init() {
+      initMap();
+      updateClock();
+      initAlarmSound();
+      
+      // Set up event listeners for origin method selection
+      originMethodRadios.forEach(radio => {
+        radio.addEventListener('change', handleOriginMethodChange);
+      });
+      
+      // Set up buttons
+      getLocationBtn.addEventListener('click', getUserLocation);
+      searchOriginBtn.addEventListener('click', searchOrigin);
+      searchDestinationBtn.addEventListener('click', searchDestination);
+      
+      // Destination input events
+      destinationInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          searchDestination();
+        }
+      });
+      
+      // Origin input events
+      originInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          searchOrigin();
+        }
+      });
+      
+      // Set alarm button
+      setAlarmBtn.addEventListener('click', () => {
+        alarmSet = true;
+        
+        setupPanel.style.display = "none";
+        journeyPanel.classList.add("active");
+        
+        startTracking();
+      });
+      
+      // Cancel alarm button
+      cancelAlarmBtn.addEventListener('click', stopAlarm);
+    }
+    
+    // Start app
+    init();
+  </script>
+</body>
+</html>
